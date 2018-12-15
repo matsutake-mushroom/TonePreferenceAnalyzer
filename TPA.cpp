@@ -319,3 +319,7 @@ void TPA::writePIcsv(){
         }
     }
 }
+
+void TPA::reckon(string ratname){
+    generateIntermediateFile(name);
+}
