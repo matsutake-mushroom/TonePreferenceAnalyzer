@@ -1,11 +1,7 @@
 #include "TPA.h"
 
 using namespace std;
-typedef vector<string> stringArray;
-typedef struct _Transfer{
-    int start;
-    int goal;
-} Transfer;
+
 class Matrix{
 private:
     vector<vector<double>> element;
@@ -226,9 +222,12 @@ public:
 };
 
 class TPA{
-    public:
+public:
+    vector<vector<double>> PI;
+    vector<vector<double>> inflow;
+    vector<vector<double>> outflow;
 
-    void generateMiddleFile(string directory_name){
+    void generateIntermediateFile(string directory_name){
         ofstream ofs("outputTransferdata.data");
         Directory curdir(directory_name);
         for(auto f: curdir.filenameList){
@@ -284,7 +283,7 @@ class TPA{
         }
         ofs.close();
     }
-    void outputPImatrix(vector<Matrix> iremono){
+    void calcPI(vector<Matrix> iremono){
         ifstream ifs("outputTransferdata.data");
         string temp;
         vector<Matrix> kaiseki;//これ外に出す！！！
@@ -318,12 +317,8 @@ class TPA{
         //後始末
         kaiseki.push_back(*pm);
         delete pm;
-    }
-    void calcPI(){
-        vector<vector<double>> PI;
-        vector<vector<double>> inflow;
-        vector<vector<double>> outflow;
 
+        //PIのけいさん
         for(auto k: kaiseki){
             vector<double> _PI(k.size[0],0.0);
             vector<double> _inflow(k.size[0],0.0);
@@ -348,6 +343,7 @@ class TPA{
             outflow.push_back(_outflow);
         }
     }
+
     void writePIcsv(){
         ofstream ofs("PreferenceIndex.csv");
         for(auto p:PI){
