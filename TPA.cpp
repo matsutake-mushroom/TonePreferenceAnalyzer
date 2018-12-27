@@ -172,16 +172,15 @@ Directory::Directory(string _data_dir){
     scanFilenames(data_dir);
 }
 
-TPA::TPA(const char* rat_name):generated(false){
-    name = string(rat_name);
-}
-
-TPA::TPA(string rat_name):generated(false){
-    name = rat_name;
+TPA::TPA():generated(false){
+    system::mkdir("analyze");
+    system::mkdir("analyze/PI");
+    system::mkdir("analyze/Inflow");
+    system::mkdir("analyze/Outflow");
 }
 
 void TPA::generateIntermediateFile(string directory_name){
-    ofstream ofs("outputTransferdata.data");
+    ofstream ofs("analyze/outputTransferdata.data");
     Directory curdir(directory_name);
     for(auto f: curdir.filenameList){
         if(extension(f)!="txt"){
@@ -190,6 +189,7 @@ void TPA::generateIntermediateFile(string directory_name){
             PreferenceData pf(f);
             switch(f[0]){
                 case 'C':
+                case 'M':
                     cout << "Chord: " << f << endl;
                     pf.extractTransferData(' ');
                     break;
@@ -210,8 +210,8 @@ void TPA::generateIntermediateFile(string directory_name){
             }
             ofs << endl;
 
-            if(pf.isOriginal){
-                cout << "ORIG" << endl;
+            if(pf.isOriginal){//identifkHz -> sound_id
+                //cout << "ORIG" << endl;
                 for(auto t: pf.transferData){
                     int count = 0;
                     int start = 0;
@@ -237,11 +237,11 @@ void TPA::generateIntermediateFile(string directory_name){
     ofs.close();
     generated = true;
 }
-void TPA::calcPI(){
+void TPA::calcPI(string ratname){
     if(!generated){
         return;
     }
-    ifstream ifs("outputTransferdata.data");
+    ifstream ifs("analyze/outputTransferdata.data");
     string temp;
     vector<Matrix> kaiseki;
     Matrix* pm;
@@ -303,11 +303,12 @@ void TPA::calcPI(){
     calculated = true;
 }
 
-void TPA::writePIcsv(){
+void TPA::writeCSVdata(string ratname){
     if(!calculated){
         return;
     }
-    ofstream ofs("PreferenceIndex.csv");
+
+    ofstream ofs(string("PI/")+ ratname);
     for(auto p:PI){
         for(auto i=p.begin(); i<p.end(); ++i){
             ofs << *i;
@@ -322,4 +323,10 @@ void TPA::writePIcsv(){
 
 void TPA::reckon(string ratname){
     generateIntermediateFile(name);
+    calcPI();
+    writePIcsv(ratname + string("_pi.csv"));
+}
+
+void system::mkdir(std::string foldername){
+    system((string("mkdir ")+foldername).c_str());
 }
