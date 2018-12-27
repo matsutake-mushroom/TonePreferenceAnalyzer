@@ -60,14 +60,16 @@ public:
     std::vector<std::vector<double>> PI;
     std::vector<std::vector<double>> inflow;
     std::vector<std::vector<double>> outflow;
-    TPA(const char*);//dir name
-    TPA(std::string);//dir name
+    TPA();
     void reckon(std::string);//ratName
 private:
     bool calculated;
     bool generated;
-    std::string name;
     void generateIntermediateFile(std::string);//dir name
     void calcPI();
-    void writePIcsv();
+    void writeCSVdata(std::string);//csv file name
 };
+
+namespace system{
+    void mkdir(std::string);
+}
