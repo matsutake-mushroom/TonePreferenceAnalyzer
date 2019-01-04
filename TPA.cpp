@@ -2,6 +2,9 @@
 
 using namespace std;
 
+Matrix::Matrix(){
+    ;
+}
 
 Matrix::Matrix(unsigned row, unsigned column){
     for(auto i = 0; i<row; ++i){
@@ -10,6 +13,11 @@ Matrix::Matrix(unsigned row, unsigned column){
     }
     size.push_back(row);
     size.push_back(column);
+}
+
+Matrix& Matrix::operator=(const Matrix &rh){
+    size = rh.size;
+    element = rh.element;
 }
 
 vector<double>& Matrix::operator[](size_t t){
@@ -74,8 +82,13 @@ string extension(string filename){
 }
 
 PreferenceData::PreferenceData(string dataname){
+    cout << "Opening:" << dataname << endl << flush;
     ifs.open(dataname);
-    dataload();
+    if(ifs.is_open()==true){
+        dataload();
+    }else{
+        cout << "error: can't open " << dataname << endl;
+    }
 }
 
 void PreferenceData::dataload(){
@@ -172,21 +185,27 @@ Directory::Directory(string _data_dir){
     scanFilenames(data_dir);
 }
 
-TPA::TPA():generated(false){
-    system::mkdir("analyze");
-    system::mkdir("analyze/PI");
-    system::mkdir("analyze/Inflow");
-    system::mkdir("analyze/Outflow");
+TPA::TPA(string analyzedir):generated(false),analyze_directory(analyzedir){
+    os::mkdir(analyzedir);
+    os::mkdir(analyzedir+"/PI");
+    os::mkdir(analyzedir+"/Inflow");
+    os::mkdir(analyzedir+"/Outflow");
 }
 
-void TPA::generateIntermediateFile(string directory_name){
-    ofstream ofs("analyze/outputTransferdata.data");
-    Directory curdir(directory_name);
+void TPA::generateIntermediateFile(string datadir, string analyzedir){
+    if(os::exist(analyzedir+"/outputTransferdata.data")){
+        cout << "Analyzed file (outputTransferdata.data) exists!" << endl;
+        generated = true;
+        return;
+    }
+    ofstream ofs(analyzedir + "/outputTransferdata.data");
+    Directory curdir(datadir);
     for(auto f: curdir.filenameList){
         if(extension(f)!="txt"){
             cout << "ignore file: " << extension(f) << endl;
         }else{
-            PreferenceData pf(f);
+            PreferenceData pf(datadir + "/"+ f);
+            cout << datadir + "/" + f << endl;
             switch(f[0]){
                 case 'C':
                 case 'M':
@@ -237,25 +256,42 @@ void TPA::generateIntermediateFile(string directory_name){
     ofs.close();
     generated = true;
 }
-void TPA::calcPI(string ratname){
+void TPA::calcPI(string analyzedir){
+    /* calculate PIs of txt files and save to member variables: PI/inflow/outflow */
     if(!generated){
         return;
     }
-    ifstream ifs("analyze/outputTransferdata.data");
-    string temp;
-    vector<Matrix> kaiseki;
+    ifstream ifs(analyzedir + "/outputTransferdata.data");
+
     Matrix* pm;
+    string ratname,date,temp;
+    map<string, vector<Datematrix>> tmpDataStorage; 
+    //tmpDataStorage[ratname] = Datematrix{date(string), matrix}
+
     bool isNewTrial = false;
     int trial = 1;
     while(getline(ifs,temp)){
         if(temp[0]=='#'){
             if(temp[1]!=','){//header
-                if(isNewTrial){
-                    kaiseki.push_back(*pm);
+                if(isNewTrial){//new file loop begins (for the very first time this is skipped)
+                    Datematrix dm;
+                    dm.date = date;
+                    dm.matrix = *pm;
+                    tmpDataStorage[ratname].push_back(dm);
                     delete pm;
+
                     isNewTrial = false;
                 }
-                trial = 1;
+                //Extract rat name and date
+                string fname = split(temp, '.')[0];
+                auto temp_name = split(fname, '_');
+                ratname = temp_name[0].substr(1);
+                date = "";
+                for(int i = 1; i<temp_name.size(); ++i){
+                    date += temp_name[i];
+                }
+                //ratname = M-01, date=1901041920
+                trial = 1;//initialization
             }
             if(temp[1]==','){//2nd row
                 int size = stoi(*((split(temp,',')).end()-1)) + 1;
@@ -272,61 +308,111 @@ void TPA::calcPI(string ratname){
         }
     }
     //後始末
-    kaiseki.push_back(*pm);
-    delete pm;
-
-    //PIのけいさん
-    for(auto k: kaiseki){
-        vector<double> _PI(k.size[0],0.0);
-        vector<double> _inflow(k.size[0],0.0);
-        vector<double> _outflow(k.size[0],0.0);
-        double sum_all = 0.0;
-        for(auto i=0; i<k.size[0]; ++i){
-            sum_all += sum(k.row(i));
-        }
-        
-        for(auto i=0; i<k.size[0]; ++i){
-            double s_and_g_is_x = k[i][i];
-            double g_is_x = sum(k.column(i));
-            double s_isnot_x = sum_all - sum(k.row(i));
-            double s_is_x = sum(k.row(i));
-            
-            _inflow[i] = (g_is_x - s_and_g_is_x)/s_isnot_x;
-            _outflow[i] = (s_is_x - s_and_g_is_x)/s_is_x;
-            _PI[i] = _inflow[i] - _outflow[i];
-        }
-        PI.push_back(_PI);
-        inflow.push_back(_inflow);
-        outflow.push_back(_outflow);
+    {
+        Datematrix dm;
+        dm.date = date;
+        dm.matrix = *pm;
+        tmpDataStorage[ratname].push_back(dm);
+        delete pm;
     }
+    //PIのけいさん
+    for(auto datemap: tmpDataStorage){
+        for(auto datedata : datemap.second){
+            auto k = datedata.matrix;
+            vector<double> _PI(k.size[0],0.0);
+            vector<double> _inflow(k.size[0],0.0);
+            vector<double> _outflow(k.size[0],0.0);
+            double sum_all = 0.0;
+            for(auto i=0; i<k.size[0]; ++i){
+                sum_all += sum(k.row(i));
+            }
+            
+            for(auto i=0; i<k.size[0]; ++i){
+                double s_and_g_is_x = k[i][i];
+                double g_is_x = sum(k.column(i));
+                double s_isnot_x = sum_all - sum(k.row(i));
+                double s_is_x = sum(k.row(i));
+                
+                _inflow[i] = (g_is_x - s_and_g_is_x)/s_isnot_x;
+                _outflow[i] = (s_is_x - s_and_g_is_x)/s_is_x;
+                _PI[i] = _inflow[i] - _outflow[i];
+            }
+            Datedata dd_pi, dd_in, dd_out;
+            dd_pi.date = datedata.date;
+            dd_in.date = datedata.date;
+            dd_out.date = datedata.date;
 
+            dd_pi.data = _PI;
+            dd_in.data = _inflow;
+            dd_out.data = _outflow;
+
+            PI[datemap.first].push_back(dd_pi);
+            inflow[datemap.first].push_back(dd_in);
+            outflow[datemap.first].push_back(dd_out);
+        }
+    }
     calculated = true;
 }
 
-void TPA::writeCSVdata(string ratname){
+void TPA::writeCSVdata(){
     if(!calculated){
         return;
     }
-
-    ofstream ofs(string("PI/")+ ratname);
-    for(auto p:PI){
-        for(auto i=p.begin(); i<p.end(); ++i){
-            ofs << *i;
-            if(i==(p.end()-1)){
-                ofs << endl;
-            }else{
-                ofs << ",";
+    for(auto pi:PI){
+        ofstream ofs(analyze_directory+ "/PI/" + pi.first+".csv");
+        for(auto dd : pi.second){
+            ofs << dd.date << ",";
+            for(auto i=dd.data.begin(); i<dd.data.end(); ++i){
+                ofs << *i;
+                if(i==(dd.data.end()-1)){
+                    ofs << endl;
+                }else{
+                    ofs << ",";
+                }
             }
         }
     }
+    for(auto _in:inflow){
+        ofstream ofs(analyze_directory+ "/Inflow/" + _in.first +".csv");
+        for(auto dd : _in.second){
+            ofs << dd.date << ",";
+            for(auto i=dd.data.begin(); i<dd.data.end(); ++i){
+                ofs << *i;
+                if(i==(dd.data.end()-1)){
+                    ofs << endl;
+                }else{
+                    ofs << ",";
+                }
+            }
+        }
+    }
+    for(auto _out:outflow){
+        ofstream ofs(analyze_directory+ "/Outflow/" + _out.first+ ".csv");
+        for(auto dd : _out.second){
+            ofs << dd.date << ",";
+            for(auto i=dd.data.begin(); i<dd.data.end(); ++i){
+                ofs << *i;
+                if(i==(dd.data.end()-1)){
+                    ofs << endl;
+                }else{
+                    ofs << ",";
+                }
+            }
+        }
+    }  
 }
 
-void TPA::reckon(string ratname){
-    generateIntermediateFile(name);
-    calcPI();
-    writePIcsv(ratname + string("_pi.csv"));
+void TPA::reckon(string datadir){
+    generateIntermediateFile(datadir, this->analyze_directory);
+    calcPI(this->analyze_directory);
+    writeCSVdata();
 }
 
-void system::mkdir(std::string foldername){
+void os::mkdir(std::string foldername){
     system((string("mkdir ")+foldername).c_str());
+}
+
+bool os::exist(std::string str){
+    ifstream ifs(str);
+    return ifs.is_open();
 }
