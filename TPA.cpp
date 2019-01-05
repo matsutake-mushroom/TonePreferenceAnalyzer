@@ -204,7 +204,7 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
         }else{
             PreferenceData pf(datadir + "/"+ f);
             cout << datadir + "/" + f << endl;
-            string identifier = split(f,'_')[0]
+            string identifier = split(f,'_')[0];
             switch(identifier[0]){//what's the deliminator character?
                 case 'C':
                     cout << "Chord: " << f << endl;
@@ -213,13 +213,13 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
                 case 'M'://Master Thesis 2019
                     cout << "Master(TM): " << f << endl;
                     if(identifier.find("MC-")==0){
-                        protocol = "MChord";
+                        pf.protocol = "MChord";
                     }else if(identifier.find("MCs-")==0){
-                        protocol = "MChordConstituent";
+                        pf.protocol = "MChordConstituent";
                     }else if(identifier.find("M-")==0){
-                        protocol = "MTinnitus";
+                        pf.protocol = "MTinnitus";
                     }else if(identifier.find("MK-")==0){
-                        protocol = "MTKobayashi";
+                        pf.protocol = "MTKobayashi";
                     }
                     pf.extractTransferData(' ');
                     break;
