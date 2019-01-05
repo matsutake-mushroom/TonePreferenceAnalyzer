@@ -94,7 +94,6 @@ PreferenceData::PreferenceData(string dataname){
 void PreferenceData::dataload(){
     string buffer, trial;
     bool isNewTrial = false;
-    isOriginal = false;
     
     while(!ifs.eof()){
         getline(ifs,buffer);
@@ -106,10 +105,9 @@ void PreferenceData::dataload(){
                 }
                 isNewTrial = true;
             }
-            //Original 限定
+            //Original 系譜のデータ
             if(in('(', buffer)){
                 stringArray sa = split(buffer, '(');
-                isOriginal = true;
                 for(string s : sa){
                     if(s[0]!='#'){//最初以外
                         sound_freq.insert(stoi(split(s, ' ')[0]));//Hz
@@ -206,10 +204,23 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
         }else{
             PreferenceData pf(datadir + "/"+ f);
             cout << datadir + "/" + f << endl;
-            switch(f[0]){
+            string identifier = split(f,'_')[0]
+            switch(identifier[0]){//what's the deliminator character?
                 case 'C':
-                case 'M':
                     cout << "Chord: " << f << endl;
+                    pf.extractTransferData(' ');
+                    break;
+                case 'M'://Master Thesis 2019
+                    cout << "Master(TM): " << f << endl;
+                    if(identifier.find("MC-")==0){
+                        protocol = "MChord";
+                    }else if(identifier.find("MCs-")==0){
+                        protocol = "MChordConstituent";
+                    }else if(identifier.find("M-")==0){
+                        protocol = "MTinnitus";
+                    }else if(identifier.find("MK-")==0){
+                        protocol = "MTKobayashi";
+                    }
                     pf.extractTransferData(' ');
                     break;
                 case 'P':
@@ -229,8 +240,8 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
             }
             ofs << endl;
 
-            if(pf.isOriginal){//identifkHz -> sound_id
-                //cout << "ORIG" << endl;
+            if(pf.protocol == "Original"){//identifkHz -> sound_id
+        
                 for(auto t: pf.transferData){
                     int count = 0;
                     int start = 0;
@@ -240,6 +251,22 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
                             start = count;
                         }
                         if(s/1000==t.goal){
+                            goal = count;
+                        }
+                        count++;
+                    }
+                    ofs << start << " " << goal << endl;
+                }
+            }else if(pf.protocol == "MTinnitus"){
+                for(auto t: pf.transferData){
+                    int count = 0;
+                    int start = 0;
+                    int goal = 0;
+                    for(auto s : pf.sound_freq){
+                        if(s==t.start){
+                            start = count;
+                        }
+                        if(s==t.goal){
                             goal = count;
                         }
                         count++;

@@ -48,7 +48,7 @@ public:
     int n_trials;
     std::set<int> sound_id;
     std::set<int> sound_freq;
-    bool isOriginal;
+    std::string protocol;
 private:
     std::ifstream ifs;
     std::vector<std::vector<std::string>> trials;
