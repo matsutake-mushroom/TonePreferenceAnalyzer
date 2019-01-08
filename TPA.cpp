@@ -105,7 +105,7 @@ void PreferenceData::dataload(){
                 }
                 isNewTrial = true;
             }
-            //Original 系譜のデータ
+            //Original 系譜のデータのみ、この行がある(他はsound_idで記録済み)
             if(in('(', buffer)){
                 stringArray sa = split(buffer, '(');
                 for(string s : sa){
@@ -221,7 +221,9 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
                     }else if(identifier.find("MK-")==0){
                         pf.protocol = "MTKobayashi";
                     }
+                    cout << pf.protocol << "..." << flush;
                     pf.extractTransferData(' ');
+                    cout << "done" << endl;
                     break;
                 case 'P':
                 case 'R':
@@ -239,9 +241,9 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
                 ofs << "," << s << flush;
             }
             ofs << endl;
-
-            if(pf.protocol == "Original"){//identifkHz -> sound_id
-        
+            cout << "Convert frequency to sound id: [" << pf.protocol << "]" << flush;
+            if(string::npos != string("Original/MChordConstituent").find(pf.protocol)){//Hz -> sound_id
+                cout << "1" << endl;
                 for(auto t: pf.transferData){
                     int count = 0;
                     int start = 0;
@@ -257,7 +259,8 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
                     }
                     ofs << start << " " << goal << endl;
                 }
-            }else if(pf.protocol == "MTinnitus"){
+            }else if(pf.protocol == "MTinnitus"){//kHz -> sound_id
+                cout << "2" << endl;
                 for(auto t: pf.transferData){
                     int count = 0;
                     int start = 0;
@@ -273,7 +276,8 @@ void TPA::generateIntermediateFile(string datadir, string analyzedir){
                     }
                     ofs << start << " " << goal << endl;
                 }
-            }else{
+            }else{//リズム、音列等あとで作ったやつ
+                cout << "3" << endl;
                 for(auto t : pf.transferData){
                     ofs << t.start << " " << t.goal << endl;
                 }
@@ -289,6 +293,7 @@ void TPA::calcPI(string analyzedir){
         return;
     }
     ifstream ifs(analyzedir + "/outputTransferdata.data");
+    cout << "CalcPI..." << endl;
 
     Matrix* pm;
     string ratname,date,temp;
@@ -318,6 +323,7 @@ void TPA::calcPI(string analyzedir){
                     date += temp_name[i];
                 }
                 //ratname = M-01, date=1901041920
+                cout << ratname << "," << date << endl;
                 trial = 1;//initialization
             }
             if(temp[1]==','){//2nd row
