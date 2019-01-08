@@ -297,7 +297,7 @@ void TPA::calcPI(string analyzedir){
 
     Matrix* pm;
     string ratname,date,temp;
-    map<string, vector<Datematrix>> tmpDataStorage; 
+    map<string, vector<Datematrix> > tmpDataStorage; 
     //tmpDataStorage[ratname] = Datematrix{date(string), matrix}
 
     bool isNewTrial = false;
